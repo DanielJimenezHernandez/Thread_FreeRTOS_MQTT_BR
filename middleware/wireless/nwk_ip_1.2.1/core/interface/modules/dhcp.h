@@ -50,7 +50,7 @@ Include Files
 #endif
 
 #ifndef DHCP4_CLIENT_ENABLED
-    #define DHCP4_CLIENT_ENABLED            0
+    #define DHCP4_CLIENT_ENABLED            1
 #endif
 
 

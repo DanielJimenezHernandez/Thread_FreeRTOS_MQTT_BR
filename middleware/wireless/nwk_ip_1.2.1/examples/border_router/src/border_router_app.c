@@ -76,6 +76,10 @@ Include Files
 #include "app_echo_udp.h"
 #endif
 
+//Team3 P3 start
+#include "Utils.h"
+//Team3 P3 end
+
 /*==================================================================================================
 Private macros
 ==================================================================================================*/
@@ -105,7 +109,15 @@ Private macros
 #define APP_RESET_TO_FACTORY_URI_PATH           "/reset"
 #endif
 
+/*#TEAM3 start*/
+#define APP_EQUIPO3_URI_PATH                       "/accel"
+/*#TEAM3 end*/
+
 #define APP_DEFAULT_DEST_ADDR                   in6addr_realmlocal_allthreadnodes
+
+// Team3  P3 start
+#define P3_TIMER_LAPSE							1000
+// Team3 P3 end
 
 /*==================================================================================================
 Private type definitions
@@ -119,6 +131,10 @@ static instanceId_t mThrInstanceId = gInvalidInstanceId_c;    /*!< Thread Instan
 static bool_t mFirstPushButtonPressed = FALSE;
 
 static bool_t mJoiningIsAppInitiated = FALSE;
+
+/*TEAM3 Start*/
+static int counter = 0;
+/*TEAM3 End*/
 
 /*==================================================================================================
 Private prototypes
@@ -143,6 +159,9 @@ static void APP_CoapLedCb(coapSessionStatus_t sessionStatus, void *pData, coapSe
 static void APP_CoapTempCb(coapSessionStatus_t sessionStatus, void *pData, coapSession_t *pSession, uint32_t dataLen);
 static void APP_CoapSinkCb(coapSessionStatus_t sessionStatus, void *pData, coapSession_t *pSession, uint32_t dataLen);
 static void App_RestoreLeaderLed(void *param);
+/*#TEAM3 start*/
+static void APP_CoapEquipo3Cb(coapSessionStatus_t sessionStatus, void *pData, coapSession_t *pSession, uint32_t dataLen);
+/*#TEAM3 end*/
 #if LARGE_NETWORK
 static void APP_CoapResetToFactoryDefaultsCb(coapSessionStatus_t sessionStatus, void *pData, coapSession_t *pSession, uint32_t dataLen);
 static void APP_SendResetToFactoryCommand(void *param);
@@ -151,6 +170,10 @@ static void APP_SendResetToFactoryCommand(void *param);
 static void APP_AutoStart(void *param);
 static void APP_AutoStartCb(void *param);
 #endif
+
+// Team3 P3 start
+static void counterTimerCb (void *param);
+// Team3 P3 end
 
 /*==================================================================================================
 Public global variables declarations
@@ -161,6 +184,10 @@ const coapUriPath_t gAPP_SINK_URI_PATH = {SizeOfString(APP_SINK_URI_PATH), (uint
 #if LARGE_NETWORK
 const coapUriPath_t gAPP_RESET_URI_PATH = {SizeOfString(APP_RESET_TO_FACTORY_URI_PATH), (uint8_t *)APP_RESET_TO_FACTORY_URI_PATH};
 #endif
+
+/* #TEAM3 start */
+const coapUriPath_t gAPP_EQUIPO3_URI_PATH = {SizeOfString(APP_EQUIPO3_URI_PATH), (uint8_t *)APP_EQUIPO3_URI_PATH};
+/* #TEAM3 end */
 
 /* Application state/mode */
 appDeviceState_t gAppDeviceState[THR_MAX_INSTANCES];
@@ -178,6 +205,12 @@ ipAddr_t gCoapDestAddress;
 
 /* Application timer Id */
 tmrTimerID_t mAppTimerId = gTmrInvalidTimerID_c;
+
+// Team3 P3 start
+tmrTimerID_t mCoapTimer  = gTmrIntervalTimer_c ;
+char strCounter[10];
+// Team3 P3 end
+
 
 #if APP_AUTOSTART
 tmrTimerID_t tmrStartApp = gTmrInvalidTimerID_c;
@@ -246,6 +279,7 @@ void APP_Init
 
 #if THREAD_USE_SHELL && SOCK_DEMO
         /* Initialize use sockets - used from shell */
+        shell_printf("DAJI: Initializing User Sockets\n", attrPanId);
         APP_InitUserSockets(mpAppThreadMsgQueue);
 #endif
 
@@ -260,6 +294,16 @@ void APP_Init
         }
 #endif
     }
+
+
+    // TODO
+
+    mCoapTimer = TMR_AllocateTimer();
+
+    TMR_StartIntervalTimer(mCoapTimer,P3_TIMER_LAPSE,counterTimerCb,NULL);
+
+
+
 }
 
 /*!*************************************************************************************************
@@ -512,7 +556,8 @@ static void APP_InitCoapDemo
 #if LARGE_NETWORK
                                      {APP_CoapResetToFactoryDefaultsCb, (coapUriPath_t *)&gAPP_RESET_URI_PATH},
 #endif
-                                     {APP_CoapSinkCb, (coapUriPath_t *)&gAPP_SINK_URI_PATH}};
+                                     {APP_CoapSinkCb, (coapUriPath_t *)&gAPP_SINK_URI_PATH},
+									 {APP_CoapEquipo3Cb,(coapUriPath_t *)&gAPP_EQUIPO3_URI_PATH}};
     /* Register Services in COAP */
     coapStartUnsecParams_t coapParams = {COAP_DEFAULT_PORT, AF_INET6};
     mAppCoapInstId = COAP_CreateInstance(NULL, &coapParams, gIpIfSlp0_c, (coapRegCbParams_t *)cbParams,
@@ -1385,6 +1430,93 @@ static void APP_CoapSinkCb
     }
 }
 
+/*#TEAM3 start*/
+static void APP_CoapEquipo3Cb
+(
+    coapSessionStatus_t sessionStatus,
+    void *pData,
+    coapSession_t *pSession,
+    uint32_t dataLen
+)
+{
+    uint8_t *pCountString = NULL;
+    uint32_t ackPloadSize = 0;
+    char addrStr[INET6_ADDRSTRLEN];
+    ifHandle_t ifHandle = THR_GetIpIfPtrByInstId(mThrInstanceId);
+
+    ntop(AF_INET6, &pSession->remoteAddr, addrStr, INET6_ADDRSTRLEN);
+
+    if (gCoapNonConfirmable_c == pSession->msgType){
+    	shell_printf("NON instruction received from %s\r\n",addrStr);
+    }
+
+    if(gCoapGET_c == pSession->code){
+    	if (gCoapConfirmable_c == pSession->msgType){
+    		shell_printf("CON instruction received from %s\r\n",addrStr);
+			pCountString = (uint8_t *)int2string(counter,strCounter,10);
+			ackPloadSize = sizeof_srt(&strCounter[0]);
+		    if(!IP_IF_IsMyAddr(ifHandle->ifUniqueId, &gCoapDestAddress))
+		    {
+		    	if(NULL != pSession){
+					FLib_MemCpy(&pSession->remoteAddr, &gCoapDestAddress, sizeof(ipAddr_t));
+					COAP_Send(pSession, gCoapMsgTypeAckSuccessChanged_c, pCountString, ackPloadSize);
+		    	}
+		    }
+			MEM_BufferFree(pCountString);
+    	}
+    }
+#if 0
+    /* Send CoAP ACK */
+    if(gCoapGET_c == pSession->code)
+    {
+        /* Get Temperature */
+        pTempString = App_GetTempDataString();
+        ackPloadSize = strlen((char*)pTempString);
+    }
+
+    /* Do not parse the message if it is duplicated */
+    else if((gCoapPOST_c == pSession->code) && (sessionStatus == gCoapSuccess_c))
+    {
+        if(NULL != pData)
+        {
+
+            uint8_t temp[10];
+
+            ntop(AF_INET6, &pSession->remoteAddr, addrStr, INET6_ADDRSTRLEN);
+            shell_write("\r");
+
+            if(0 != dataLen)
+            {
+                /* Prevent from buffer overload */
+                (dataLen >= maxDisplayedString) ? (dataLen = (maxDisplayedString - 1)) : (dataLen);
+                temp[dataLen]='\0';
+                FLib_MemCpy(temp,pData,dataLen);
+                shell_printf((char*)temp);
+            }
+            shell_printf("\tFrom IPv6 Address: %s\n\r", addrStr);
+            shell_refresh();
+        }
+    }
+
+    if(gCoapConfirmable_c == pSession->msgType)
+    {
+        if(gCoapGET_c == pSession->code)
+        {
+            COAP_Send(pSession, gCoapMsgTypeAckSuccessChanged_c, pTempString, ackPloadSize);
+        }
+        else
+        {
+            COAP_Send(pSession, gCoapMsgTypeAckSuccessChanged_c, NULL, 0);
+        }
+    }
+
+    if(pTempString)
+    {
+        MEM_BufferFree(pTempString);
+    }
+#endif
+}
+/*#TEAM3 end*/
 /*!*************************************************************************************************
 \private
 \fn     static void App_RestoreLeaderLed(void * param)
@@ -1489,6 +1621,22 @@ static void APP_AutoStartCb
     NWKU_SendMsg(APP_AutoStart, NULL, mpAppThreadMsgQueue);
 }
 #endif
+
+/*TEAM3 start */
+static void counterTimerCb
+(
+		void *param
+)
+{
+
+	if (counter == 200 )
+	{
+		counter = 0;
+	}
+	counter++;
+	//shell_printf("Counter Value %s",int2string(counter,strCounter,10));
+}
+/*TEAM3 end */
 
 /*==================================================================================================
 Private debug functions

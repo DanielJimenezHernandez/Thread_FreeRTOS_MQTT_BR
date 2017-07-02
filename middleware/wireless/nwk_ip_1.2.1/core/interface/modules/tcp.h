@@ -45,8 +45,9 @@ Include Files
 #include "ip.h"
 #include "GenericList.h"
 
+
 #ifndef TCP_ENABLED
-#   define TCP_ENABLED              (0)     /*!< Enable/disable module */
+#   define TCP_ENABLED              (1)     /*!< Enable/disable module */
 #endif
 
 #ifndef TCP_RCV_WND_MANAGEMENT

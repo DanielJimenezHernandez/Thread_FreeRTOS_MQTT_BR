@@ -50,7 +50,7 @@ Include Files
 #include "app_serial_tun.h"
 
 #include "thread_utils.h"
-
+#include "app_socket_utils.h"
 
 /*==================================================================================================
 Private macros
@@ -104,6 +104,10 @@ void BR_Start(taskMsgQueue_t *pTaskMsgQueue, instanceId_t thrInstanceID)
 
 #if  (USBENET_ROUTER || USBENET_HOST)
     IFUSBENET_Start(pTaskMsgQueue, thrInstanceID);
+#endif
+
+#if START_TCP_SOCKSERV
+    APP_InitUserSockets(pTaskMsgQueue);
 #endif
 }
 

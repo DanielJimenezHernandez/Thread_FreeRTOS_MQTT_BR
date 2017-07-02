@@ -119,6 +119,7 @@ void APP_InitUserSockets
             gaUserSockID[idx].userSockFd = gBsdsSockInvalid_c;
             gaUserSockID[idx].timerID = gTmrInvalidTimerID_c;
             #if TCP_ENABLED
+            shell_printf("DAJI:TCP Is Enabled\n");
             gaUserSockID[idx].pRemoteAddr = NULL;
             #endif
         }

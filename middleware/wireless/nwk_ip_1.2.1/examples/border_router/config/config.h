@@ -41,7 +41,7 @@
 CONFIG APPLICATION
 ==================================================================================================*/
 
-#define USE_TEMPERATURE_SENSOR    1
+#define USE_TEMPERATURE_SENSOR    0
 
 #if (defined(TWR_KW24) || defined(FRDM_KW24) || defined(FRDM_K64F))
     #define THREAD_USE_SHELL                    1
@@ -101,8 +101,8 @@ CONFIG APPLICATION
     #define USBENET_ROUTER                      1
     #define USBENET_HOST                        0
 #elif defined(FRDM_K64F)
-    #define ENET_ROUTER                         1
-    #define ENET_HOST                           0
+    #define ENET_ROUTER                         0
+    #define ENET_HOST                           1
 #endif
 
 #if THR_SERIAL_TUN_ROUTER && !(ENET_ROUTER || ENET_HOST || USBENET_ROUTER  || USBENET_HOST)

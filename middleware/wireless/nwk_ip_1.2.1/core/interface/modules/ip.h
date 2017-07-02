@@ -50,11 +50,11 @@ Public macros
 
 
 #ifndef IP_IP6_ENABLE
-   #define IP_IP6_ENABLE 0
+   #define IP_IP6_ENABLE 1
 #endif
 
 #ifndef IP_IP4_ENABLE
-   #define IP_IP4_ENABLE 0
+   #define IP_IP4_ENABLE 1
 #endif
 
 #if (IP_IP6_ENABLE == 0) && (IP_IP4_ENABLE == 0)
