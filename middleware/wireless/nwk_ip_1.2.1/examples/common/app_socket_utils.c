@@ -119,7 +119,6 @@ void APP_InitUserSockets
             gaUserSockID[idx].userSockFd = gBsdsSockInvalid_c;
             gaUserSockID[idx].timerID = gTmrInvalidTimerID_c;
             #if TCP_ENABLED
-            shell_printf("DAJI:TCP Is Enabled\n");
             gaUserSockID[idx].pRemoteAddr = NULL;
             #endif
         }
@@ -138,6 +137,35 @@ void APP_InitUserSockets
 ***************************************************************************************************/
 static void APP_InitSocketServer(void)
 {
+#if START_TCP_SOCKSERV
+    /* Socket storage information used for RX */
+    sockaddrIn_t mSsRx = {0};
+
+    if(mSockfd != -1)
+    {
+        /* socket already initialised */
+        return;
+    }
+
+    /* Create a socket for global IP address */
+    /* Set local information */
+
+    mSsRx.sin_family = AF_INET;
+    mSsRx.sin_port = TCP_PORT;
+    IP_AddrCopy(&mSsRx.sin_addr, &inaddr_any);
+
+    /* Create socket */
+    mSockfd = socket(mSsRx.sin_family, SOCK_DGRAM, IPPROTO_TCP);
+
+    /* Bind socket to local information */
+    bind(mSockfd, (sockaddrStorage_t*)&mSsRx, sizeof(sockaddrStorage_t));
+
+    /* Initializes the Session task*/
+    Session_Init();
+
+    Session_RegisterCb(mSockfd, APP_SocketClientRxCallback, pmAppSockThreadMsgQueue);
+
+#else
     /* Socket storage information used for RX */
     sockaddrIn6_t mSsRx = {0};
 
@@ -164,6 +192,7 @@ static void APP_InitSocketServer(void)
     Session_Init();
 
     Session_RegisterCb(mSockfd, APP_SocketClientRxCallback, pmAppSockThreadMsgQueue);
+#endif
 
 }
 /*!************************************************************************************************
@@ -179,13 +208,13 @@ static void APP_InitSocketServer(void)
 static void APP_SocketClientRxCallback(void *param)
 {
     sessionPacket_t *pSessionPacket = (sessionPacket_t*)param;
-    sockaddrIn6_t *pRemAddr = (sockaddrIn6_t*)(&pSessionPacket->remAddr);
-    char addrStr[INET6_ADDRSTRLEN];
+    sockaddrIn_t *pRemAddr = (sockaddrIn_t*)(&pSessionPacket->remAddr);
+    char addrStr[INET_ADDRSTRLEN];
 
     shell_write("\r");
     shell_write((char *)pSessionPacket->pData);
-    ntop(AF_INET6, &pRemAddr->sin6_addr, addrStr, INET6_ADDRSTRLEN);
-    shell_printf("\tFrom IPv6 Address: %s\n\r", addrStr);
+    ntop(AF_INET, &pRemAddr->sin_addr, addrStr, INET_ADDRSTRLEN);
+    shell_printf("\tFrom IPv4 Address: %s\n\r", addrStr);
     shell_refresh();
 
     MEM_BufferFree(pSessionPacket->pData);

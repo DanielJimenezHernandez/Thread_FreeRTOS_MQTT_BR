@@ -51,6 +51,7 @@ Include Files
 Public macros
 ==================================================================================================*/
 #define UDP_PORT                        (1234)
+#define TCP_PORT						(9091)
 #define START_TCP_SOCKSERV (1)
 
 #ifndef gUSER_MAX_SOCKETS

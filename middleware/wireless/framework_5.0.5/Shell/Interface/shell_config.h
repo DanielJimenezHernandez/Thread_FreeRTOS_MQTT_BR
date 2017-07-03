@@ -76,7 +76,7 @@
 
 /* maximum number of user functions */
 #ifndef SHELL_MAX_COMMANDS
-#define SHELL_MAX_COMMANDS            (5)
+#define SHELL_MAX_COMMANDS            (10)
 #endif
 
 /* Interface configuration */

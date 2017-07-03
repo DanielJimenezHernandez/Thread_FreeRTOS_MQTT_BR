@@ -106,9 +106,6 @@ void BR_Start(taskMsgQueue_t *pTaskMsgQueue, instanceId_t thrInstanceID)
     IFUSBENET_Start(pTaskMsgQueue, thrInstanceID);
 #endif
 
-#if START_TCP_SOCKSERV
-    APP_InitUserSockets(pTaskMsgQueue);
-#endif
 }
 
 /*!*************************************************************************************************

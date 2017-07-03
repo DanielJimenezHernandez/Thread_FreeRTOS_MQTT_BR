@@ -80,6 +80,8 @@ Include Files
 #include "Utils.h"
 //Team3 P3 end
 
+#define SOCK_DEMO (1)
+
 /*==================================================================================================
 Private macros
 ==================================================================================================*/
@@ -279,7 +281,7 @@ void APP_Init
 
 #if THREAD_USE_SHELL && SOCK_DEMO
         /* Initialize use sockets - used from shell */
-        shell_printf("DAJI: Initializing User Sockets\n", attrPanId);
+        shell_printf("DAJI: Initializing User Sockets\n");
         APP_InitUserSockets(mpAppThreadMsgQueue);
 #endif
 
