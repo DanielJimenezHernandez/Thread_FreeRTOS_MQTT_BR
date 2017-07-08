@@ -79,7 +79,8 @@ Include Files
 //Team3 P3 start
 #include "Utils.h"
 //Team3 P3 end
-
+/* MQTT dependencies */
+#include "MQTTPacket.h"
 #define SOCK_DEMO (1)
 
 /*==================================================================================================
@@ -120,6 +121,7 @@ Private macros
 // Team3  P3 start
 #define P3_TIMER_LAPSE							1000
 // Team3 P3 end
+#define BUFLEN 512
 
 /*==================================================================================================
 Private type definitions
@@ -225,6 +227,9 @@ taskMsgQueue_t *mpAppThreadMsgQueue = NULL;
 
 extern bool_t gEnable802154TxLed;
 
+/*MQTT*/
+
+
 /*==================================================================================================
 Public functions
 ==================================================================================================*/
@@ -284,6 +289,8 @@ void APP_Init
         shell_printf("DAJI: Initializing User Sockets\n");
         APP_InitUserSockets(mpAppThreadMsgQueue);
 #endif
+
+
 
 #if APP_AUTOSTART
         tmrStartApp = TMR_AllocateTimer();
@@ -1630,6 +1637,19 @@ static void counterTimerCb
 		void *param
 )
 {
+	unsigned char * MQTTPacket[BUFLEN];
+	int i,len_connect;
+	MQTTPacket_connectData default_options_connect = MQTTPacket_connectData_initializer;
+
+	default_options_connect.MQTTVersion = 3;
+	default_options_connect.keepAliveInterval = 10;
+	default_options_connect.clientID.cstring = "FRDM-K64F";
+	len_connect = MQTTSerialize_connect(&MQTTPacket[0],BUFLEN,&default_options_connect);
+	shell_printf("Connect Packet");
+	for (i = 0; i < len_connect; i++){
+		shell_printf("[0x%02x]",MQTTPacket);
+	}
+	shell_printf("\n");
 
 	if (counter == 200 )
 	{

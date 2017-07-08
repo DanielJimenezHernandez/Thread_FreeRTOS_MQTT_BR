@@ -77,6 +77,8 @@ Include Files
 #include "app_event_monitoring.h"
 #endif
 
+#define SOCK_DEMO (1)
+
 #if SOCK_DEMO
 #include "app_socket_utils.h"
 #endif
@@ -4273,6 +4275,33 @@ static int8_t SHELL_Socket
             pAppSockCmdParams->appSocketsTrans = gSockUdp;
             /* Set local information */
             pAppSockCmdParams->ipVersion = AF_INET6;
+
+            /* Set remote information for easier send */
+            if(pAppSockCmdParams->ipVersion == AF_INET6)
+            {
+                pAppSockCmdParams->sin6_port = atoi((char const*)argv[4]);
+                result = pton(AF_INET6, argv[3], &pAppSockCmdParams->sin6_addr);
+            }
+            else
+            {
+                pAppSockCmdParams->sin_port = atoi((char const*)argv[4]);
+                result = pton(AF_INET, argv[3], &pAppSockCmdParams->sin_addr);
+            }
+
+            if(result == -1)
+            {
+                shell_write("IP address has a wrong format");
+                SHELL_NEWLINE();
+                ret = CMD_RET_FAILURE;
+            }
+        }
+        else if(!strcmp(argv[2], "tcp"))
+        {
+            uint32_t result = -1;
+
+            pAppSockCmdParams->appSocketsTrans = gSockTcp;
+            /* Set local information */
+            pAppSockCmdParams->ipVersion = AF_INET;
 
             /* Set remote information for easier send */
             if(pAppSockCmdParams->ipVersion == AF_INET6)

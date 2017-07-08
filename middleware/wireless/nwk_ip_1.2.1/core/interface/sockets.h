@@ -50,9 +50,9 @@ Include Files
 #include "EmbeddedTypes.h"
 #include "network_utils.h"
 #include "udp.h"
-//#if TCP_ENABLED
+#if TCP_ENABLED
 #include "tcp.h"
-//#endif
+#endif
 
 /*==================================================================================================
 Public macros
