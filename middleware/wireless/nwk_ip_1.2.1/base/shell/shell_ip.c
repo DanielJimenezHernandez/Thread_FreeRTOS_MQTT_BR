@@ -4274,13 +4274,13 @@ static int8_t SHELL_Socket
 
             pAppSockCmdParams->appSocketsTrans = gSockUdp;
             /* Set local information */
-            pAppSockCmdParams->ipVersion = AF_INET6;
+            pAppSockCmdParams->ipVersion = AF_INET;
 
             /* Set remote information for easier send */
             if(pAppSockCmdParams->ipVersion == AF_INET6)
             {
                 pAppSockCmdParams->sin6_port = atoi((char const*)argv[4]);
-                result = pton(AF_INET6, argv[3], &pAppSockCmdParams->sin6_addr);
+                result = pton(AF_INET6, "192.168.1.5", &pAppSockCmdParams->sin6_addr);
             }
             else
             {
@@ -4427,12 +4427,15 @@ static int8_t SHELL_Socket
 
     if(ret == CMD_RET_ASYNC)
     {
+    	/*
         if(FALSE == App_SocketSendAsync(pAppSockCmdParams))
         {
             ret = CMD_RET_FAILURE;
             shell_write("No memory for creating the command");
             MEM_BufferFree(pAppSockCmdParams);
         }
+        */
+    	App_SocketHandleSendAsync(pAppSockCmdParams);
     }
     else
     {

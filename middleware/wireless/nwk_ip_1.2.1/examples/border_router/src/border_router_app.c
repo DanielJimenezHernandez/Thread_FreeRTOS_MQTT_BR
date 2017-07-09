@@ -81,6 +81,7 @@ Include Files
 //Team3 P3 end
 /* MQTT dependencies */
 #include "MQTTPacket.h"
+#include "MQTTClient.h"
 #define SOCK_DEMO (1)
 
 /*==================================================================================================
@@ -139,6 +140,12 @@ static bool_t mJoiningIsAppInitiated = FALSE;
 /*TEAM3 Start*/
 static int counter = 0;
 /*TEAM3 End*/
+
+/* MQTT */
+
+unsigned char MQTTPacket[BUFLEN];
+int len_connect;
+MQTTPacket_connectData default_options_connect = MQTTPacket_connectData_initializer;
 
 /*==================================================================================================
 Private prototypes
@@ -286,7 +293,6 @@ void APP_Init
 
 #if THREAD_USE_SHELL && SOCK_DEMO
         /* Initialize use sockets - used from shell */
-        shell_printf("DAJI: Initializing User Sockets\n");
         APP_InitUserSockets(mpAppThreadMsgQueue);
 #endif
 
@@ -310,6 +316,11 @@ void APP_Init
     mCoapTimer = TMR_AllocateTimer();
 
     TMR_StartIntervalTimer(mCoapTimer,P3_TIMER_LAPSE,counterTimerCb,NULL);
+    char * serverAddr = "192.168.1.5";
+    MQTTConnectUDP(8888,serverAddr);
+    uint8_t pdata[7] = {0x48,0x65,0x6c,0x6c,0x6f,0x0d,0x0a};
+    MQTTUdpSend(&pdata[0],7);
+
 
 
 
@@ -1637,20 +1648,13 @@ static void counterTimerCb
 		void *param
 )
 {
-	unsigned char * MQTTPacket[BUFLEN];
-	int i,len_connect;
-	MQTTPacket_connectData default_options_connect = MQTTPacket_connectData_initializer;
-
+#if 0
 	default_options_connect.MQTTVersion = 3;
 	default_options_connect.keepAliveInterval = 10;
 	default_options_connect.clientID.cstring = "FRDM-K64F";
-	len_connect = MQTTSerialize_connect(&MQTTPacket[0],BUFLEN,&default_options_connect);
-	shell_printf("Connect Packet");
-	for (i = 0; i < len_connect; i++){
-		shell_printf("[0x%02x]",MQTTPacket);
-	}
-	shell_printf("\n");
-
+	len_connect = MQTTSerialize_connect(MQTTPacket,BUFLEN,&default_options_connect);
+	MQTTPrintSerializedPacket(MQTTPacket,len_connect,"Connect Serialized Packet");
+#endif
 	if (counter == 200 )
 	{
 		counter = 0;

@@ -76,7 +76,7 @@ Private prototypes
 ==================================================================================================*/
 static void APP_InitSocketServer(void);
 static void APP_SocketClientRxCallback(void *param);
-static void App_SocketHandleSendAsync(void* pAppSockCmdParams);
+//static void App_SocketHandleSendAsync(void* pAppSockCmdParams);
 
 static void App_SocketOpenBindUdp(appSockCmdParams_t* pSockCmdParams);
 #if TCP_ENABLED
@@ -138,35 +138,7 @@ void APP_InitUserSockets
 ***************************************************************************************************/
 static void APP_InitSocketServer(void)
 {
-#if START_TCP_SOCKSERV
-    /* Socket storage information used for RX */
-    sockaddrIn_t mSsRx = {0};
-
-    if(mSockfd != -1)
-    {
-        /* socket already initialised */
-        return;
-    }
-
-    /* Create a socket for global IP address */
-    /* Set local information */
-
-    mSsRx.sin_family = AF_INET;
-    mSsRx.sin_port = TCP_PORT;
-    IP_AddrCopy(&mSsRx.sin_addr, &inaddr_any);
-
-    /* Create socket */
-    mSockfd = socket(mSsRx.sin_family, SOCK_DGRAM, IPPROTO_TCP);
-
-    /* Bind socket to local information */
-    bind(mSockfd, (sockaddrStorage_t*)&mSsRx, sizeof(sockaddrStorage_t));
-
-    /* Initializes the Session task*/
-    Session_Init();
-
-    Session_RegisterCb(mSockfd, APP_SocketClientRxCallback, pmAppSockThreadMsgQueue);
-
-#else
+#if 0
     /* Socket storage information used for RX */
     sockaddrIn6_t mSsRx = {0};
 
@@ -194,7 +166,32 @@ static void APP_InitSocketServer(void)
 
     Session_RegisterCb(mSockfd, APP_SocketClientRxCallback, pmAppSockThreadMsgQueue);
 #endif
+    /* Socket storage information used for RX */
+    sockaddrIn6_t mSsRx = {0};
 
+    if(mSockfd != -1)
+    {
+        /* socket already initialised */
+        return;
+    }
+
+    /* Create a socket for global IP address */
+    /* Set local information */
+
+    mSsRx.sin6_family = AF_INET;
+    mSsRx.sin6_port = UDP_PORT;
+    IP_AddrCopy(&mSsRx.sin6_addr, &inaddr_any);
+
+    /* Create socket */
+    mSockfd = socket(mSsRx.sin6_family, SOCK_DGRAM, IPPROTO_UDP);
+
+    /* Bind socket to local information */
+    bind(mSockfd, (sockaddrStorage_t*)&mSsRx, sizeof(sockaddrStorage_t));
+
+    /* Initializes the Session task*/
+    Session_Init();
+
+    Session_RegisterCb(mSockfd, APP_SocketClientRxCallback, pmAppSockThreadMsgQueue);
 }
 /*!************************************************************************************************
 *
@@ -278,7 +275,7 @@ Private functions
 
 \retval       none
 ***************************************************************************************************/
-static void App_SocketHandleSendAsync
+void App_SocketHandleSendAsync
 (
     void* pAppSockCmdParams
 )
