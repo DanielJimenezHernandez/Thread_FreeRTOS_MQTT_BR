@@ -3,89 +3,133 @@
 #include <network_utils.h>
 #include <shell.h>
 #include <app_socket_utils.h>
+#include "EmbeddedTypes.h"
+#include <string.h>
+#include <stdio.h>
 #include "MQTTPacket.h"
+#include "MQTTClient.h"
+#include "Utils.h"
 
 /*IP Version */
-#define UNSPEC       0   /*!< Unspecified sockets */
-#define INET         2   /*!< Internet IP Protocol */
-#define INET6        10  /*!< IP version 6 */
+#define DEVICE_ID "FRDM-K64F"
+#define BUFLEN 512
 
 int32_t sockFd;
+int8_t sockID;
 
+sMQTTParams MQTTParams;
 extern taskMsgQueue_t *mpAppThreadMsgQueue;
+appSockCmdParams_t *pAppSockCmdParams;
+int MQTTState = INIT;
 
-void MQTTConnectUDP(int udpPort, char * udpAddr){
-#if 0
-    uint32_t connectResult,ptonResult;
+/* Buffers for selialized data*/
+unsigned char MQTTPublishPacket[BUFLEN];
+char connectPack[25] = {0x10,0x17,0x00,0x06,0x4d,0x51,0x49,0x73,0x64,0x70,0x03,
+						0x02,0x00,0x00,0x00,0x09,0x46,0x52,0x44,0x4d,0x2d,0x4b,
+						0x36,0x34,0x46};
 
-    sockaddrIn_t   localInfo;
-    sockaddrIn_t   remoteInfo;
-    ipAddr_t 	   remoteAddr;
-    char ipaddress[128];
-/*
-    ptonResult = pton(AF_INET,"255.255.255.255",&remoteAddr);
-    shell_printf("pton Result:%d",ptonResult);
-*/
-    remoteAddr.addr8[15] = 0x05;
-    remoteAddr.addr8[14] = 0x01;
-    remoteAddr.addr8[13] = 0xA8;
-    remoteAddr.addr8[12] = 0xC0;
-    ntop(AF_INET,&remoteAddr,ipaddress,128);
-    shell_printf("Address from ntop:%s\n",ipaddress);
+/* Private functions */
 
-    shell_write("Opening Socket... ");
+eState state = INIT;
 
 
-	(&localInfo)->sin_family = AF_INET;
-	(&localInfo)->sin_port = 1234;
-	 IP_AddrCopy(&(&localInfo)->sin_addr, &inaddr_any);
-
-	 /* Create socket */
-	 sockFd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-
-        if(sockFd)
-        {
-
-		uint32_t bindErr;
-
-		/* Bind socket to local information */
-		bindErr = bind(sockFd, (sockaddrStorage_t*)&localInfo, sizeof(sockaddrStorage_t));
-
-		switch(bindErr)
-		{
-			case gBsdsSockSuccess_c:
-				/* Set remote information for easier send */
-
-				((sockaddrIn_t*)&remoteInfo)->sin_port = udpPort;
-				IP_AddrCopy(&(&remoteInfo)->sin_addr, &remoteAddr);
-
-				/* Set Remote information */
-				connectResult = connect(sockFd, (sockaddrStorage_t*)&remoteInfo, sizeof(sockaddrStorage_t));
-				if (0 == connectResult){
-					shell_printf("Connected to remote server...\n");
-				}
-				else{
-					shell_printf("ERROR Connecting to remote server..\n");
-				}
-				break;
-			default:
-				shutdown(sockFd, 0);
-				shell_write("ERROR\n\rBind went wrong");
-				break;
-		}
-
-         } /* socket was created successfully */
-         else
-         {
-            shell_write("ERROR\n\rCreating socket failed");
-         }
-#endif
-
-       // APP_InitUserSockets(mpAppThreadMsgQueue);
+void MQTTInit(void){
+	APP_InitUserSockets(mpAppThreadMsgQueue,&sockID);
+	pAppSockCmdParams = MEM_BufferAlloc(sizeof(appSockCmdParams_t));
 }
 
-void MQTTUdpSend(uint8_t *pdata, uint8_t datalen){
-	int result;
-	result = send(sockFd,pdata,datalen,0);
-	shell_printf("Result of send:%d\n",result);
+void MQTTOpenUdp(int udpPort, char * udpAddr){
+
+	FLib_MemSet(pAppSockCmdParams, 0, sizeof(appSockCmdParams_t));
+
+	/* Check number of arguments according to the shellComm table */
+	pAppSockCmdParams->appSocketsCmd = gSockOpenUdp;
+	/* socket open udp */
+	uint32_t result = -1;
+
+	pAppSockCmdParams->appSocketsTrans = gSockUdp;
+	/* Set local information */
+	pAppSockCmdParams->ipVersion = AF_INET;
+
+	/* Set remote information for easier send */
+	if(pAppSockCmdParams->ipVersion == AF_INET6)
+	{
+		pAppSockCmdParams->sin6_port = udpPort;
+		result = pton(AF_INET6,udpAddr, &pAppSockCmdParams->sin6_addr);
+	}
+	else
+	{
+		pAppSockCmdParams->sin_port = udpPort;
+		result = pton(AF_INET, udpAddr, &pAppSockCmdParams->sin_addr);
+	}
+
+	if(result == -1)
+	{
+		shell_write("IP address has a wrong format");
+		SHELL_NEWLINE();
+	}
+
+    App_SocketHandleSendAsync(pAppSockCmdParams);
 }
+
+
+void MQTTRxCallback(void *param){
+    sessionPacket_t *pSessionPacket = (sessionPacket_t*)param;
+    sockaddrIn_t *pRemAddr = (sockaddrIn_t*)(&pSessionPacket->remAddr);
+    int packetType;
+    packetType = pSessionPacket->pData[0] >> 4;
+
+    if (packetType == CONNACK){
+    	MQTTState = CONNECTED;
+    }
+    else if(packetType == 0xff && pSessionPacket->pData[1] == 0x01){
+    	MQTTState = DISCONNECTED;
+    }
+
+}
+
+
+unsigned char testbuffer[6] = {'H','e','l','l','o','\0'};
+int tempFlag =0;
+void MQTTSendTest(sMQTTParams *params){
+
+        if (MQTTState != CONNECTED && params->cmd == mqttConnect){
+        	MQTTSendConnect();
+        }
+        else if(MQTTState == CONNECTED && params->cmd == mqttPublish){
+        	MQTTSendPublish(params->topic,params->payload, params->payloadLen);
+        }
+}
+
+void MQTTSendPublish(char * topic,char * payload, int payloadLen){
+	FLib_MemSet(pAppSockCmdParams, 0, sizeof(appSockCmdParams_t));
+	int len_publish;
+
+	MQTTPacket_publishData default_options_publish = MQTTPacket_publishData_initializer;
+	default_options_publish.topicName.cstring = topic;
+	default_options_publish.payload = (unsigned char*)payload;
+	default_options_publish.payloadlen = payloadLen;
+	len_publish = MQTTSerialize_publish_opt(MQTTPublishPacket,BUFLEN,&default_options_publish);
+
+	pAppSockCmdParams->appSocketsCmd = gSockSend;
+	/* Get socket id */
+	pAppSockCmdParams->sock32 = sockID;
+	pAppSockCmdParams->pData = MQTTPublishPacket;
+	pAppSockCmdParams->dataLen = len_publish;
+
+	App_SocketHandleSendAsync(pAppSockCmdParams);
+}
+
+void MQTTSendConnect(void){
+	FLib_MemSet(pAppSockCmdParams, 0, sizeof(appSockCmdParams_t));
+	int len_connect = 25;
+
+	pAppSockCmdParams->appSocketsCmd = gSockSend;
+	/* Get socket id */
+	pAppSockCmdParams->sock32 = sockID;
+	pAppSockCmdParams->pData = connectPack;
+	pAppSockCmdParams->dataLen = len_connect;
+
+	App_SocketHandleSendAsync(pAppSockCmdParams);
+}
+

@@ -101,6 +101,8 @@ typedef struct appSockCmdParams_tag
     uint8_t  dataLen;
     uint32_t timeMs;
     bool_t   bSelectedFlag;
+    uint8_t  last_sockid;
+    void (* nwkMsgHandler)(void*);
 }appSockCmdParams_t;
 
 typedef struct userSock_tag
@@ -153,7 +155,7 @@ extern "C" {
 
 \return         void
 ***************************************************************************************************/
-void APP_InitUserSockets(taskMsgQueue_t * pAppSockThreadMsgQueue);
+void APP_InitUserSockets(taskMsgQueue_t * pAppSockThreadMsgQueue,int8_t *sockID);
 
 /*!*************************************************************************************************
 \fn     bool_t App_SocketSendAsync(appSockCmdParams_t* pAppSockCmdParams)                                         

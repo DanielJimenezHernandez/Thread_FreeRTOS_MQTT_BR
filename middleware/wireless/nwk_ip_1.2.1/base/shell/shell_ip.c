@@ -77,7 +77,7 @@ Include Files
 #include "app_event_monitoring.h"
 #endif
 
-#define SOCK_DEMO (1)
+#define SOCK_DEMO (0)
 
 #if SOCK_DEMO
 #include "app_socket_utils.h"

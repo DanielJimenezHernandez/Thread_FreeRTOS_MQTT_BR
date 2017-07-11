@@ -82,7 +82,7 @@ Include Files
 /* MQTT dependencies */
 #include "MQTTPacket.h"
 #include "MQTTClient.h"
-#define SOCK_DEMO (1)
+#define SOCK_DEMO (0)
 
 /*==================================================================================================
 Private macros
@@ -144,8 +144,9 @@ static int counter = 0;
 /* MQTT */
 
 unsigned char MQTTPacket[BUFLEN];
-int len_connect;
-MQTTPacket_connectData default_options_connect = MQTTPacket_connectData_initializer;
+
+sMQTTParams MQTTParams;
+
 
 /*==================================================================================================
 Private prototypes
@@ -235,8 +236,7 @@ taskMsgQueue_t *mpAppThreadMsgQueue = NULL;
 extern bool_t gEnable802154TxLed;
 
 /*MQTT*/
-
-
+char * serverAddr = "192.168.1.88";
 /*==================================================================================================
 Public functions
 ==================================================================================================*/
@@ -316,14 +316,8 @@ void APP_Init
     mCoapTimer = TMR_AllocateTimer();
 
     TMR_StartIntervalTimer(mCoapTimer,P3_TIMER_LAPSE,counterTimerCb,NULL);
-    char * serverAddr = "192.168.1.5";
-    MQTTConnectUDP(8888,serverAddr);
-    uint8_t pdata[7] = {0x48,0x65,0x6c,0x6c,0x6f,0x0d,0x0a};
-    MQTTUdpSend(&pdata[0],7);
-
-
-
-
+    MQTTInit();
+    MQTTOpenUdp(8888,"192.168.1.88");
 }
 
 /*!*************************************************************************************************
@@ -1459,6 +1453,7 @@ static void APP_CoapEquipo3Cb
     uint32_t dataLen
 )
 {
+	int i;
     uint8_t *pCountString = NULL;
     uint32_t ackPloadSize = 0;
     char addrStr[INET6_ADDRSTRLEN];
@@ -1485,6 +1480,17 @@ static void APP_CoapEquipo3Cb
 			MEM_BufferFree(pCountString);
     	}
     }
+    shell_printf("Data:");
+    for(i = 0; i < dataLen; i++){
+    	shell_printf("%c",((char * )pData)[i]);
+    }
+
+    shell_printf("\n");
+	MQTTParams.cmd = mqttPublish;
+	MQTTParams.payload = (char *)pData;
+	MQTTParams.topic = "home/accel";
+	MQTTParams.payloadLen = dataLen;
+	MQTTSendTest(&MQTTParams);
 #if 0
     /* Send CoAP ACK */
     if(gCoapGET_c == pSession->code)
@@ -1643,23 +1649,36 @@ static void APP_AutoStartCb
 #endif
 
 /*TEAM3 start */
+int connectFlag = 0;
+int retries = 5;
 static void counterTimerCb
 (
 		void *param
 )
 {
 #if 0
-	default_options_connect.MQTTVersion = 3;
-	default_options_connect.keepAliveInterval = 10;
-	default_options_connect.clientID.cstring = "FRDM-K64F";
-	len_connect = MQTTSerialize_connect(MQTTPacket,BUFLEN,&default_options_connect);
-	MQTTPrintSerializedPacket(MQTTPacket,len_connect,"Connect Serialized Packet");
+	if (connectFlag != CONNECTED  && retries){
+		MQTTParams.cmd = mqttConnect;
+		MQTTParams.port = 8888;
+		MQTTParams.serverAddr = "192.168.1.88";
+		connectFlag = MQTTStateMachine(&MQTTParams);
+		retries--;
+	}
+	else{
+		MQTTParams.cmd = mqttPublish;
+		MQTTParams.payload = "Test1";
+		MQTTParams.topic = "home/accel";
+
+		MQTTStateMachine(&MQTTParams);
+	}
 #endif
 	if (counter == 200 )
 	{
 		counter = 0;
 	}
 	counter++;
+	MQTTParams.cmd = mqttConnect;
+	MQTTSendTest(&MQTTParams);
 	//shell_printf("Counter Value %s",int2string(counter,strCounter,10));
 }
 /*TEAM3 end */

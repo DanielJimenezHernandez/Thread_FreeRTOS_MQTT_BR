@@ -65,6 +65,8 @@ userSock_t      gaUserSockID[gUSER_MAX_SOCKETS]; /* User socket list */
 /* Server sockets */
 static int32_t mSockfd = -1;
 
+extern void MQTTRxCallback(void *param);
+
 /*==================================================================================================
 Public global variables declarations
 ==================================================================================================*/
@@ -104,13 +106,15 @@ Public functions
 
 \return         void
 ***************************************************************************************************/
+int8_t *socketID;
 void APP_InitUserSockets
 (
-    taskMsgQueue_t * pAppSockThreadMsgQueue
+    taskMsgQueue_t * pAppSockThreadMsgQueue,
+	int8_t *sockID
 )
 {
     uint32_t idx;
-
+    socketID = sockID;
     if (NULL == pmAppSockThreadMsgQueue)
     {
         pmAppSockThreadMsgQueue = pAppSockThreadMsgQueue;
@@ -123,7 +127,7 @@ void APP_InitUserSockets
             gaUserSockID[idx].pRemoteAddr = NULL;
             #endif
         }
-        APP_InitSocketServer();
+        //APP_InitSocketServer();
     }
 }
 /*!************************************************************************************************
@@ -191,7 +195,7 @@ static void APP_InitSocketServer(void)
     /* Initializes the Session task*/
     Session_Init();
 
-    Session_RegisterCb(mSockfd, APP_SocketClientRxCallback, pmAppSockThreadMsgQueue);
+    Session_RegisterCb(mSockfd, MQTTRxCallback, pmAppSockThreadMsgQueue);
 }
 /*!************************************************************************************************
 *
@@ -311,9 +315,11 @@ void App_SocketHandleSendAsync
             break;
     }
 
+    /*
     MEM_BufferFree(pSockCmdParams->pData);
     MEM_BufferFree(pSockCmdParams);
-    shell_refresh();
+    */
+    //shell_refresh();
 }
 
 /*!*************************************************************************************************
@@ -325,7 +331,7 @@ void App_SocketHandleSendAsync
 
 \retval       none
 ***************************************************************************************************/
-static void App_SocketOpenBindUdp(appSockCmdParams_t* pSockCmdParams)
+static void App_SocketOpenBindUdp(appSockCmdParams_t*  pSockCmdParams)
 {
     int32_t sockFd;
     uint32_t iSock;
@@ -342,7 +348,7 @@ static void App_SocketOpenBindUdp(appSockCmdParams_t* pSockCmdParams)
         if(pSockCmdParams->ipVersion == AF_INET6)
         {
             localInfo.sin6_family = pSockCmdParams->ipVersion;
-            localInfo.sin6_port = 0;
+            localInfo.sin6_port = UDP_PORT;
             IP_AddrCopy(&localInfo.sin6_addr, &in6addr_any);
 
             /* Create socket */
@@ -351,7 +357,7 @@ static void App_SocketOpenBindUdp(appSockCmdParams_t* pSockCmdParams)
         else
         {
             ((sockaddrIn_t*)&localInfo)->sin_family = pSockCmdParams->ipVersion;
-            ((sockaddrIn_t*)&localInfo)->sin_port = 0;
+            ((sockaddrIn_t*)&localInfo)->sin_port = UDP_PORT;
              IP_AddrCopy(&((sockaddrIn_t*)&localInfo)->sin_addr, &in6addr_any);
 
              /* Create socket */
@@ -399,6 +405,13 @@ static void App_SocketOpenBindUdp(appSockCmdParams_t* pSockCmdParams)
                         SHELL_NEWLINE();
                         shell_write("Socket id is: ");
                         shell_writeDec(iSock);
+
+                        pSockCmdParams->last_sockid = iSock;
+                        *socketID = iSock;
+                        /* Initializes the Session task*/
+                        Session_Init();
+
+                        Session_RegisterCb(sockFd, MQTTRxCallback, pmAppSockThreadMsgQueue);
 
                         break;
                     default:
@@ -559,7 +572,7 @@ static void App_SocketSend(appSockCmdParams_t* pSockCmdParams)
                 pSockCmdParams->pData,
                 pSockCmdParams->dataLen,
                 0);
-        shell_write("Socket Data Sent");
+        //shell_write("Socket Data Sent");
     }
     else
     {
